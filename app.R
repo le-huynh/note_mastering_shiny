@@ -5,14 +5,18 @@ ui <- fluidPage(
 	tableOutput("table")
 )
 server <- function(input, output, session) {
+	# Create a reactive expression
+	dataset <- reactive({
+		get(input$dataset, "package:datasets")
+	})
+	
 	output$summary <- renderPrint({
-		dataset <- get(input$dataset, "package:datasets")
-		summary(dataset)
+		# Use a reactive expression by calling it like a function
+		summary(dataset())
 	})
 	
 	output$table <- renderTable({
-		dataset <- get(input$dataset, "package:datasets")
-		dataset
+		dataset()
 	})
 }
 shinyApp(ui, server)
