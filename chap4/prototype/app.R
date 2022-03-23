@@ -29,21 +29,24 @@ ui <- fluidPage(
 		column(12, plotOutput("age_sex"))
 	)
 )
-#>>
+#>> count top
+count_top <- function(df, var, n = 5) {
+	df %>%
+		mutate({{ var }} := fct_lump(fct_infreq({{ var }}), n = n)) %>%
+		group_by({{ var }}) %>%
+		summarise(n = as.integer(sum(weight)))
+}
 
 #<< server
 server <- function(input, output, session) {
 	selected <- reactive(injuries %>% filter(prod_code == input$code))
 	
-	output$diag <- renderTable(
-		selected() %>% count(diag, wt = weight, sort = TRUE)
-	)
-	output$body_part <- renderTable(
-		selected() %>% count(body_part, wt = weight, sort = TRUE)
-	)
-	output$location <- renderTable(
-		selected() %>% count(location, wt = weight, sort = TRUE)
-	)
+	output$diag <- renderTable(count_top(selected(), diag),
+			       width = "100%")
+	output$body_part <- renderTable(count_top(selected(), body_part),
+				  width = "100%")
+	output$location <- renderTable(count_top(selected(), location),
+				 width = "100%")
 	
 	summary <- reactive({
 		selected() %>%
