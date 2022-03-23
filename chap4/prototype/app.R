@@ -11,14 +11,16 @@ if (!exists("injuries")) {
 	population <- vroom::vroom(here("chap4/data/population.tsv"))
 }
 
-#<< ui
+# ui
 prod_codes <- setNames(products$prod_code, products$title)
 
 ui <- fluidPage(
 	fluidRow(
-		column(6,
-		       selectInput("code", "Product", choices = prod_codes)
-		)
+		column(8,
+		       selectInput("code", "Product",
+		       	  choices = prod_codes,
+		       	  width = "100%")),
+		column(2, selectInput("y", "Y axis", c("rate", "count")))
 	),
 	fluidRow(
 		column(4, tableOutput("diag")),
@@ -36,18 +38,20 @@ count_top <- function(df, var, n = 5) {
 		group_by({{ var }}) %>%
 		summarise(n = as.integer(sum(weight)))
 }
+#<<
 
-#<< server
+# server
 server <- function(input, output, session) {
 	selected <- reactive(injuries %>% filter(prod_code == input$code))
 	
+	#>> tables
 	output$diag <- renderTable(count_top(selected(), diag),
 			       width = "100%")
 	output$body_part <- renderTable(count_top(selected(), body_part),
 				  width = "100%")
 	output$location <- renderTable(count_top(selected(), location),
 				 width = "100%")
-	
+	#<<
 	summary <- reactive({
 		selected() %>%
 			count(age, sex, wt = weight) %>%
@@ -55,13 +59,20 @@ server <- function(input, output, session) {
 			mutate(rate = n / population * 1e4)
 	})
 	
+	#>> rate vs count
 	output$age_sex <- renderPlot({
-		summary() %>%
-			ggplot(aes(age, n, colour = sex)) +
-			geom_line() +
-			labs(y = "Estimated number of injuries")
-	}, res = 96)
-}
+		if (input$y == "count") {
+			summary() %>%
+				ggplot(aes(age, n, colour = sex)) +
+				geom_line() +
+				labs(y = "Estimated number of injuries")
+		} else {
+			summary() %>%
+				ggplot(aes(age, rate, colour = sex)) +
+				geom_line(na.rm = TRUE) +
+				labs(y = "Injuries per 10,000 people")
+		}
+	}, res = 96)}
 #>>
 
 shinyApp(ui, server)
