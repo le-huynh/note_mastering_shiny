@@ -17,10 +17,17 @@ prod_codes <- setNames(products$prod_code, products$title)
 ui <- fluidPage(
 	fluidRow(
 		column(8,
-		       selectInput("code", "Product",
-		       	  choices = prod_codes,
-		       	  width = "100%")),
-		column(2, selectInput("y", "Y axis", c("rate", "count")))
+		       selectInput("code",
+		       	         "Product",
+		       	         choices = prod_codes,
+		       	         width = "100%")),
+		column(2, numericInput("rows", 
+				   "Number of Rows",
+				   min = 1, 
+				   max = 10, 
+				   value = 5)),
+		column(2, 
+		       selectInput("y", "Y axis", c("rate", "count")))
 	),
 	fluidRow(
 		column(4, tableOutput("diag")),
@@ -48,14 +55,29 @@ count_top <- function(df, var, n = 5) {
 server <- function(input, output, session) {
 	selected <- reactive(injuries %>% filter(prod_code == input$code))
 	
-	#>> tables
-	output$diag <- renderTable(count_top(selected(), diag),
-			       width = "100%")
-	output$body_part <- renderTable(count_top(selected(), body_part),
-				  width = "100%")
-	output$location <- renderTable(count_top(selected(), location),
-				 width = "100%")
-	#<<
+	# Find the maximum possible of rows.
+	max_no_rows <- reactive(
+		max(length(unique(selected()$diag)),
+		    length(unique(selected()$body_part)),
+		    length(unique(selected()$location)))
+	)
+	
+	# Update the maximum value for the numericInput based on max_no_rows().
+	observeEvent(input$code, {
+		updateNumericInput(session, "rows", max = max_no_rows())
+	})
+	
+	table_rows <- reactive(input$rows - 1)
+	
+	output$diag <- renderTable(
+		count_top(selected(), diag, n = table_rows()), width = "100%")
+	
+	output$body_part <- renderTable(
+		count_top(selected(), body_part, n = table_rows()), width = "100%")
+	
+	output$location <- renderTable(
+		count_top(selected(), location, n = table_rows()), width = "100%")	
+	
 	summary <- reactive({
 		selected() %>%
 			count(age, sex, wt = weight) %>%
