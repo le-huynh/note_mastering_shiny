@@ -29,6 +29,10 @@ ui <- fluidPage(
 	),
 	fluidRow(
 		column(12, plotOutput("age_sex"))
+	),
+	fluidRow(
+		column(2, actionButton("story", "Tell me a story")),
+		column(10, textOutput("narrative"))
 	)
 )
 #>> count top
@@ -72,7 +76,15 @@ server <- function(input, output, session) {
 				geom_line(na.rm = TRUE) +
 				labs(y = "Injuries per 10,000 people")
 		}
-	}, res = 96)}
+	}, res = 96)
+	
+	#>> narrative
+	narrative_sample <- eventReactive(
+		list(input$story, selected()),
+		selected() %>% pull(narrative) %>% sample(1)
+	)
+	output$narrative <- renderText(narrative_sample())
+	}
 #>>
 
 shinyApp(ui, server)
