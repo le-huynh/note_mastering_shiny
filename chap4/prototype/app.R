@@ -38,8 +38,9 @@ ui <- fluidPage(
 		column(12, plotOutput("age_sex"))
 	),
 	fluidRow(
-		column(2, actionButton("story", "Tell me a story")),
-		column(10, textOutput("narrative"))
+		column(2, actionButton("prev_story", "Previous story")),
+		column(2, actionButton("next_story", "Next story")),		
+		column(8, textOutput("narrative"))
 	)
 )
 #>> count top
@@ -100,13 +101,35 @@ server <- function(input, output, session) {
 		}
 	}, res = 96)
 	
-	#>> narrative
-	narrative_sample <- eventReactive(
-		list(input$story, selected()),
-		selected() %>% pull(narrative) %>% sample(1)
-	)
-	output$narrative <- renderText(narrative_sample())
-	}
+	# Store the maximum posible number of stories.
+	max_no_stories <- reactive(length(selected()$narrative))
+	
+	# Reactive used to save the current position in the narrative list.
+	story <- reactiveVal(1)
+	
+	# Reset the story counter if the user changes the product code. 
+	observeEvent(input$code, {
+		story(1)
+	})
+	
+	# When the user clicks "Next story", increase the current position in the
+	# narrative but never go beyond the interval [1, length of the narrative].
+	# Note that the mod function (%%) is keeping `current`` within this interval.
+	observeEvent(input$next_story, {
+		story((story() %% max_no_stories()) + 1)
+	})
+	
+	# When the user clicks "Previous story" decrease the current position in the
+	# narrative. Note that we also take advantage of the mod function.
+	observeEvent(input$prev_story, {
+		story(((story() - 2) %% max_no_stories()) + 1)
+	})
+	
+	output$narrative <- renderText({
+		selected()$narrative[story()]
+	})
+
+}
 #>>
 
 shinyApp(ui, server)
